@@ -1,0 +1,230 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Inicialmente SQLite local; para PostgreSQL, basta trocar para provider = "postgresql"
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model BankAccount {
+  id                  String             @id @default(cuid())
+  name                String
+  institution         String
+  type                String             @default("CHECKING") // CHECKING | SAVINGS | WALLET | INVESTMENT
+  initialBalanceCents Int                @default(0)
+  color               String             @default("#6366f1")
+  icon                String             @default("Landmark")
+  isActive            Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  creditCards         CreditCard[]
+  transactions        Transaction[]
+  recurringExpenses   RecurringExpense[]
+  importBatches       ImportBatch[]
+}
+
+model CreditCard {
+  id                String             @id @default(cuid())
+  name              String
+  institution       String
+  lastFourDigits    String?
+  limitCents        Int                @default(0)
+  closingDay        Int                @default(1)
+  dueDay            Int                @default(10)
+  color             String             @default("#8b5cf6")
+  bankAccountId     String?
+  bankAccount       BankAccount?       @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  transactions      Transaction[]
+  installmentGroups InstallmentGroup[]
+  recurringExpenses RecurringExpense[]
+  importBatches     ImportBatch[]
+}
+
+model Category {
+  id                 String             @id @default(cuid())
+  name               String             @unique
+  slug               String             @unique
+  type               String             @default("EXPENSE") // EXPENSE | INCOME | BOTH | NEUTRAL
+  color              String             @default("#3b82f6")
+  icon               String             @default("Tag")
+  isSystem           Boolean            @default(false)
+  monthlyBudgetCents Int?               // Meta mensal em centavos
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  transactions       Transaction[]
+  installmentGroups  InstallmentGroup[]
+  recurringExpenses  RecurringExpense[]
+  extractedItems     ExtractedItem[]
+  categoryRules      CategoryRule[]
+  spreadsheetRows    SpreadsheetRow[]
+}
+
+model InstallmentGroup {
+  id                String        @id @default(cuid())
+  description       String
+  totalAmountCents  Int
+  totalInstallments Int
+  startDate         DateTime
+  creditCardId      String?
+  creditCard        CreditCard?   @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  categoryId        String?
+  category          Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt         DateTime      @default(now())
+  transactions      Transaction[]
+}
+
+model RecurringExpense {
+  id            String        @id @default(cuid())
+  description   String
+  amountCents   Int
+  type          String        @default("EXPENSE") // EXPENSE | INCOME
+  dayOfMonth    Int           @default(5)
+  active        Boolean       @default(true)
+  categoryId    String?
+  category      Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  bankAccountId String?
+  bankAccount   BankAccount?  @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  creditCardId  String?
+  creditCard    CreditCard?   @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  transactions  Transaction[]
+}
+
+model ImportBatch {
+  id             String          @id @default(cuid())
+  sourceName     String          // Ex: "Extrato Nubank - 2 imagens"
+  referenceMonth String          // "YYYY-MM"
+  imageCount     Int             @default(1)
+  status         String          @default("PENDING_REVIEW") // PENDING_REVIEW | CONFIRMED | FAILED
+  providerUsed   String          @default("gemini")
+  errorMessage   String?
+  bankAccountId  String?
+  bankAccount    BankAccount?    @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  creditCardId   String?
+  creditCard     CreditCard?     @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now())
+  confirmedAt    DateTime?
+  extractedItems ExtractedItem[]
+  transactions   Transaction[]
+}
+
+model ExtractedItem {
+  id                String      @id @default(cuid())
+  importBatchId     String
+  importBatch       ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  rawDateText       String?
+  resolvedDate      DateTime
+  competenceMonth   String      // "YYYY-MM"
+  description       String
+  merchant          String?
+  amountCents       Int
+  type              String      @default("EXPENSE") // EXPENSE | INCOME | TRANSFER | INVOICE_PAYMENT | REFUND
+  categoryId        String?
+  category          Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  suggestedCategory String?
+  installmentNumber Int?
+  totalInstallments Int?
+  needsReview       Boolean     @default(false)
+  reviewReason      String?
+  isDuplicate       Boolean     @default(false)
+  duplicateReason   String?
+  fingerprint       String
+  selected          Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+
+  @@index([importBatchId])
+  @@index([fingerprint])
+}
+
+model Transaction {
+  id                 String            @id @default(cuid())
+  description        String
+  merchant           String?
+  amountCents        Int               // Sempre positivo em centavos
+  type               String            @default("EXPENSE") // EXPENSE | INCOME | TRANSFER | INVOICE_PAYMENT | REFUND
+  date               DateTime          // Data real da movimentação
+  competenceMonth    String            // "YYYY-MM" para agrupamento mensal e parcelas
+  categoryId         String?
+  category           Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  bankAccountId      String?
+  bankAccount        BankAccount?      @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  creditCardId       String?
+  creditCard         CreditCard?       @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  installmentGroupId String?
+  installmentGroup   InstallmentGroup? @relation(fields: [installmentGroupId], references: [id], onDelete: Cascade)
+  installmentNumber  Int?
+  totalInstallments  Int?
+  recurringExpenseId String?
+  recurringExpense   RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+  importBatchId      String?
+  importBatch        ImportBatch?      @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  origin             String            @default("MANUAL") // MANUAL | AI_IMPORT | RECURRING | INSTALLMENT | SPREADSHEET
+  fingerprint        String
+  notes              String?
+  expenseName        String?           // Nome normalizado do gasto (ex: Condomínio, Combustível)
+  plannedAmountCents Int?              // Valor previsto em centavos (para planejamento/receitas previstas)
+  paidAmountCents    Int?              // Valor efetivamente pago/recebido (suporta pagamento parcial)
+  paymentStatus      String            @default("PAID") // PENDING | PARTIAL | PAID | OVERDUE
+  dueDate            DateTime?         // Data de vencimento
+  paidAt             DateTime?         // Data efetiva do pagamento/recebimento
+  spreadsheetRowId   String?
+  spreadsheetRow     SpreadsheetRow?   @relation(fields: [spreadsheetRowId], references: [id], onDelete: SetNull)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([competenceMonth])
+  @@index([date])
+  @@index([type])
+  @@index([categoryId])
+  @@index([bankAccountId])
+  @@index([creditCardId])
+  @@index([fingerprint])
+  @@index([paymentStatus])
+  @@index([spreadsheetRowId])
+}
+
+model SpreadsheetRow {
+  id             String        @id @default(cuid())
+  name           String
+  categoryId     String?
+  category       Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  highlightColor String?       // Cor de destaque da linha na planilha (ex: #d946ef, #dc2626, #0ea5e9)
+  sortOrder      Int           @default(0)
+  active         Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  transactions   Transaction[]
+
+  @@index([sortOrder])
+  @@index([categoryId])
+}
+
+model FinancialReserve {
+  id                 String   @id @default(cuid())
+  name               String
+  targetAmountCents  Int      @default(0)
+  currentAmountCents Int      @default(0)
+  color              String   @default("#10b981")
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model CategoryRule {
+  id              String   @id @default(cuid())
+  pattern         String   // Padrão normalizado do estabelecimento/descrição
+  rawExample      String   // Exemplo original para exibição ao usuário
+  transactionType String   @default("ALL") // ALL | EXPENSE | INCOME | TRANSFER | INVOICE_PAYMENT | REFUND
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([pattern, transactionType])
+  @@index([pattern])
+}

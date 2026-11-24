@@ -1,0 +1,27 @@
+# Dependências e build
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+
+# Runtime portátil (node.exe > 70MB, não vai para o GitHub)
+runtime/
+
+# Dados financeiros privados e backups (NUNCA subir para o GitHub)
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db-shm
+prisma/*.db-wal
+backups/
+
+# Segredos e variáveis de ambiente (use .env.example como modelo)
+.env
+.env*.local
+
+# Logs locais e arquivos temporários
+server.log
+server-error.log
+*.log
+.DS_Store
+Thumbs.db
