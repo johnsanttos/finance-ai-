@@ -96,53 +96,67 @@ export function CategoryPieChart({
               Nenhuma despesa registrada neste período.
             </div>
           ) : (
-            <div className='h-[280px] w-full'>
-              <ResponsiveContainer width='100%' height='100%'>
-                <PieChart>
-                  <Pie
-                    data={data}
-                    dataKey='amountCents'
-                    nameKey='name'
-                    cx='50%'
-                    cy='50%'
-                    innerRadius={56}
-                    outerRadius={90}
-                    paddingAngle={3}
-                    onClick={(entry) => {
-                      if (entry?.name) setSelectedCategory(String(entry.name))
-                    }}
-                    className='cursor-pointer'
-                  >
-                    {data.map((entry, idx) => (
-                      <Cell key={`cell-${idx}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: number, _name, item) => [
-                      `${formatCentsToBrl(Number(value))} (${item?.payload?.percentage ?? 0}%)`,
-                      String(item?.payload?.name || 'Total'),
-                    ]}
-                    contentStyle={{
-                      borderRadius: '8px',
-                      backgroundColor: 'var(--popover)',
-                      color: 'var(--popover-foreground)',
-                      border: '1px solid var(--border)',
-                    }}
-                  />
-                  <Legend
-                    verticalAlign='bottom'
-                    height={36}
-                    formatter={(value) => (
+            <div className='flex flex-col gap-2'>
+              <div className='h-[200px] w-full'>
+                <ResponsiveContainer width='100%' height='100%'>
+                  <PieChart>
+                    <Pie
+                      data={data}
+                      dataKey='amountCents'
+                      nameKey='name'
+                      cx='50%'
+                      cy='50%'
+                      innerRadius={52}
+                      outerRadius={82}
+                      paddingAngle={2}
+                      onClick={(entry) => {
+                        if (entry?.name) setSelectedCategory(String(entry.name))
+                      }}
+                      className='cursor-pointer'
+                    >
+                      {data.map((entry, idx) => (
+                        <Cell key={`cell-${idx}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number, _name, item) => [
+                        `${formatCentsToBrl(Number(value))} (${item?.payload?.percentage ?? 0}%)`,
+                        String(item?.payload?.name || 'Total'),
+                      ]}
+                      contentStyle={{
+                        borderRadius: '8px',
+                        backgroundColor: 'var(--popover)',
+                        color: 'var(--popover-foreground)',
+                        border: '1px solid var(--border)',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <ul className='flex max-h-[112px] flex-wrap justify-center gap-x-3 gap-y-1.5 overflow-y-auto rounded-md border bg-muted/20 p-2'>
+                {data.map((entry) => (
+                  <li key={entry.name} className='min-w-0 max-w-full'>
+                    <button
+                      type='button'
+                      className='flex max-w-full cursor-pointer items-center gap-1.5 text-left text-[11px] text-foreground hover:text-primary hover:underline'
+                      onClick={() => setSelectedCategory(entry.name)}
+                      title={`${entry.name}: ${formatCentsToBrl(entry.amountCents)} (${entry.percentage}%)`}
+                    >
                       <span
-                        className='cursor-pointer text-xs text-foreground hover:underline'
-                        onClick={() => setSelectedCategory(String(value))}
-                      >
-                        {value}
+                        aria-hidden='true'
+                        className='size-2.5 shrink-0 rounded-full'
+                        style={{ backgroundColor: entry.color }}
+                      />
+                      <span className='min-w-0 truncate max-w-[140px]'>
+                        {entry.name}
                       </span>
-                    )}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+                      <span className='shrink-0 text-[10px] text-muted-foreground'>
+                        ({entry.percentage}%)
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </CardContent>

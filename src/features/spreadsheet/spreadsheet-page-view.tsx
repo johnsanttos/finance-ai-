@@ -21,6 +21,7 @@ import {
   Table2,
   Trash2,
   Undo2,
+  Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -77,6 +78,7 @@ import {
   SpreadsheetSummaryPanel,
 } from './components/spreadsheet-summary-panel'
 import { IncomeTableSection } from './components/income-table-section'
+import { ImportSpreadsheetModal } from './components/import-spreadsheet-modal'
 
 interface CategoryOption {
   id: string
@@ -174,6 +176,7 @@ export function SpreadsheetPageView() {
 
   // Modal de nova linha (gasto + categoria ou nova categoria)
   const [newRowModalOpen, setNewRowModalOpen] = useState(false)
+  const [importModalOpen, setImportModalOpen] = useState(false)
   const [newRowName, setNewRowName] = useState('')
   const [newRowCategoryId, setNewRowCategoryId] = useState('NONE')
   const [newRowHighlightColor, setNewRowHighlightColor] = useState('')
@@ -890,6 +893,16 @@ export function SpreadsheetPageView() {
             >
               <FileSpreadsheet className='h-3.5 w-3.5' />
               Excel
+            </Button>
+
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => setImportModalOpen(true)}
+              className='h-9 gap-1.5 border-primary/40 text-xs text-primary hover:bg-primary/10'
+            >
+              <Upload className='h-3.5 w-3.5' />
+              Importar Planilha / Print
             </Button>
 
             <Button
@@ -1685,6 +1698,20 @@ export function SpreadsheetPageView() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Importação de Histórico de Planilhas (Excel, CSV ou Print) */}
+      <ImportSpreadsheetModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        defaultMonth={month}
+        onImported={(monthsSaved) => {
+          if (monthsSaved.length > 0 && !monthsSaved.includes(month)) {
+            setMonth(monthsSaved[monthsSaved.length - 1])
+          }
+          loadSpreadsheet(true)
+          triggerRefresh()
+        }}
+      />
 
       {/* Confirmação de Exclusão de Linha */}
       <AlertDialog
